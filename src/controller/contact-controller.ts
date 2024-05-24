@@ -1,12 +1,15 @@
 import express from "express";
 import { PrismaClient } from "@prisma/client";
+
 const prisma = new PrismaClient();
+
 async function identify(req: express.Request, res: express.Response) {
   const { email, phoneNumber } = req.body;
-  console.log(phoneNumber);
+
   if (!email && !phoneNumber) {
-    return res.status(400).json({ error: "Email or phone Number must be provided" });
+    return res.status(400).json({ error: "Email or phone number must be provided" });
   }
+
   try {
     const contacts = await prisma.contact.findMany({
       where: {
@@ -33,10 +36,9 @@ async function identify(req: express.Request, res: express.Response) {
       });
     }
 
-    let primaryContact = contacts.find((contact) => contact.linkPrecedence === "primary");
-    if (!primaryContact) {
-      primaryContact = contacts[0];
-    }
+    let primaryContact = contacts.reduce((oldest, contact) => {
+      return contact.createdAt < oldest.createdAt ? contact : oldest;
+    }, contacts[0]);
 
     for (const contact of contacts) {
       if (contact.id !== primaryContact.id && contact.linkedId !== primaryContact.id) {
@@ -50,8 +52,12 @@ async function identify(req: express.Request, res: express.Response) {
       }
     }
 
-    // Createing a new secondary contact
-    if (!contacts.some((contact) => contact.email === email && contact.phoneNumber === phoneNumber)) {
+    // Check if the provided data matches an existing contact
+    const emailMatch = email && contacts.some((contact) => contact.email === email);
+    const phoneMatch = phoneNumber && contacts.some((contact) => contact.phoneNumber === phoneNumber);
+
+    // Create a new secondary contact if there's new information
+    if ((email && !emailMatch) || (phoneNumber && !phoneMatch)) {
       await prisma.contact.create({
         data: {
           email,
@@ -62,18 +68,22 @@ async function identify(req: express.Request, res: express.Response) {
       });
     }
 
+    // Gather all linked contacts
+    const allContacts = await prisma.contact.findMany({
+      where: {
+        OR: [{ id: primaryContact.id }, { linkedId: primaryContact.id }],
+      },
+    });
+
     const emails = new Set<string>();
     const phoneNumbers = new Set<string>();
-    const secondaryContactIds = [];
+    const secondaryContactIds: number[] = [];
 
-    for (const contact of contacts) {
+    for (const contact of allContacts) {
       if (contact.email) emails.add(contact.email);
       if (contact.phoneNumber) phoneNumbers.add(contact.phoneNumber);
       if (contact.id !== primaryContact.id) secondaryContactIds.push(contact.id);
     }
-
-    if (email) emails.add(email);
-    if (phoneNumber) phoneNumbers.add(phoneNumber);
 
     res.json({
       contact: {
@@ -84,7 +94,8 @@ async function identify(req: express.Request, res: express.Response) {
       },
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 }
 

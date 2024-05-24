@@ -9,8 +9,8 @@ datasource db {
 
 model Contact {
   id             Int       @id @default(autoincrement())
-  phoneNumber    String?   @unique
-  email          String?   @unique
+  phoneNumber    String?
+  email          String?
   linkedId       Int?
   linkPrecedence String    @default("primary")
   createdAt      DateTime  @default(now())

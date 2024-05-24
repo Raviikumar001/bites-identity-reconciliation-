@@ -11,9 +11,3 @@ CREATE TABLE "Contact" (
 
     CONSTRAINT "Contact_pkey" PRIMARY KEY ("id")
 );
-
--- CreateIndex
-CREATE UNIQUE INDEX "Contact_phoneNumber_key" ON "Contact"("phoneNumber");
-
--- CreateIndex
-CREATE UNIQUE INDEX "Contact_email_key" ON "Contact"("email");
