@@ -1,11 +1,10 @@
 import express from "express";
-import { PrismaClient } from "@prisma/client";
 
+import Router from "./routes/contact-routes";
 const app = express();
-const prisma = new PrismaClient();
 
 app.use(express.json());
-
+app.use("/", Router);
 app.get("/", (req, res) => {
   res.send("Hello, Bitespeed!");
 });
