@@ -40,8 +40,20 @@ async function identify(req: express.Request, res: express.Response) {
       return contact.createdAt < oldest.createdAt ? contact : oldest;
     }, contacts[0]);
 
+    // for (const contact of contacts) {
+    //   if (contact.id !== primaryContact.id && contact.linkedId !== primaryContact.id) {
+    //     await prisma.contact.update({
+    //       where: { id: contact.id },
+    //       data: {
+    //         linkedId: primaryContact.id,
+    //         linkPrecedence: "secondary",
+    //       },
+    //     });
+    //   }
+    // }
+
     for (const contact of contacts) {
-      if (contact.id !== primaryContact.id && contact.linkedId !== primaryContact.id) {
+      if (contact.id !== primaryContact.id && contact.linkedId !== primaryContact.id && !((contact.email === null && email === null) || (contact.phoneNumber === null && phoneNumber === null))) {
         await prisma.contact.update({
           where: { id: contact.id },
           data: {
@@ -51,7 +63,6 @@ async function identify(req: express.Request, res: express.Response) {
         });
       }
     }
-
     // Check if the provided data matches an existing contact
     const emailMatch = email && contacts.some((contact) => contact.email === email);
     const phoneMatch = phoneNumber && contacts.some((contact) => contact.phoneNumber === phoneNumber);
@@ -74,7 +85,7 @@ async function identify(req: express.Request, res: express.Response) {
         OR: [{ id: primaryContact.id }, { linkedId: primaryContact.id }],
       },
     });
-
+    console.log(allContacts, "contacts");
     const emails = new Set<string>();
     const phoneNumbers = new Set<string>();
     const secondaryContactIds: number[] = [];
