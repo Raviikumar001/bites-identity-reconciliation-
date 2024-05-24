@@ -3,9 +3,9 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 async function identify(req: express.Request, res: express.Response) {
   const { email, phoneNumber } = req.body;
-
+  console.log(phoneNumber);
   if (!email && !phoneNumber) {
-    return res.status(400).json({ error: "Email or phoneNumber must be provided" });
+    return res.status(400).json({ error: "Email or phone Number must be provided" });
   }
   try {
     const contacts = await prisma.contact.findMany({
@@ -38,9 +38,8 @@ async function identify(req: express.Request, res: express.Response) {
       primaryContact = contacts[0];
     }
 
-    // Update secondary contacts to link to  pri. contact
     for (const contact of contacts) {
-      if (contact.id !== primaryContact.id) {
+      if (contact.id !== primaryContact.id && contact.linkedId !== primaryContact.id) {
         await prisma.contact.update({
           where: { id: contact.id },
           data: {
@@ -49,6 +48,18 @@ async function identify(req: express.Request, res: express.Response) {
           },
         });
       }
+    }
+
+    // Createing a new secondary contact
+    if (!contacts.some((contact) => contact.email === email && contact.phoneNumber === phoneNumber)) {
+      await prisma.contact.create({
+        data: {
+          email,
+          phoneNumber,
+          linkedId: primaryContact.id,
+          linkPrecedence: "secondary",
+        },
+      });
     }
 
     const emails = new Set<string>();
