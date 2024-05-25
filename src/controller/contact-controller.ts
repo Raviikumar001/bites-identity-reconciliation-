@@ -53,12 +53,6 @@ async function identify(req: express.Request, res: express.Response) {
         }
       }
     }
-    // Ensure we include all linked contacts up to the primary contact
-    const allContacts = await prisma.contact.findMany({
-      where: {
-        OR: [{ id: primaryContact.id }, { linkedId: primaryContact.id }],
-      },
-    });
 
     for (const contact of initialContacts) {
       if (contact.id !== primaryContact.id && contact.linkedId !== primaryContact.id && !((contact.email === null && email === null) || (contact.phoneNumber === null && phoneNumber === null))) {
@@ -86,6 +80,13 @@ async function identify(req: express.Request, res: express.Response) {
         },
       });
     }
+
+    // Ensure we include all linked contacts up to the primary contact
+    const allContacts = await prisma.contact.findMany({
+      where: {
+        OR: [{ id: primaryContact.id }, { linkedId: primaryContact.id }],
+      },
+    });
 
     // Gather all linked contacts
     const emails = new Set<string>();
