@@ -36,7 +36,4 @@ Generate and run the Prisma migration to create the Contact table in your databa
 npm run dev
 
 ```
-Assumptons
-If you seeing if a primary contact becmes a secondary contact, for the first time it recives a request, it makes the contact secondary, but gives response of the primary contact record, 
-hit the api agiain with same request, you'll get the ideal response , with all secondary fields. 😌
 
