@@ -16,7 +16,7 @@ DATABASE_URL = your postgresql database url
 
 Instructions:
 ```
-git clone 'repo name'
+git clone ['repo name'](https://github.com/Raviikumar001/bites-identity-reconciliation-.git)
 
 ```
 ```
@@ -37,6 +37,6 @@ npm run dev
 
 ```
 Assumptons
-If you seeing if a primary contact becmes a secondary contact, for the first time it recives request, it makes the it contact secondary, but gives response of the primary contact record, 
+If you seeing if a primary contact becmes a secondary contact, for the first time it recives a request, it makes the contact secondary, but gives response of the primary contact record, 
 hit the api agiain with same request, you'll get the ideal response , with all secondary fields. 😌
 
