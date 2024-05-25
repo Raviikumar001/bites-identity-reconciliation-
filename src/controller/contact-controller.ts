@@ -11,13 +11,13 @@ async function identify(req: express.Request, res: express.Response) {
   }
 
   try {
-    const contacts = await prisma.contact.findMany({
+    const initialContacts = await prisma.contact.findMany({
       where: {
-        OR: [{ email }, { phoneNumber }],
+        OR: [{ email: email || undefined }, { phoneNumber: phoneNumber || undefined }],
       },
     });
 
-    if (contacts.length === 0) {
+    if (initialContacts.length === 0) {
       const newContact = await prisma.contact.create({
         data: {
           email,
@@ -36,23 +36,31 @@ async function identify(req: express.Request, res: express.Response) {
       });
     }
 
-    let primaryContact = contacts.reduce((oldest, contact) => {
+    //  primary contact
+    let primaryContact = initialContacts.reduce((oldest, contact) => {
       return contact.createdAt < oldest.createdAt ? contact : oldest;
-    }, contacts[0]);
+    }, initialContacts[0]);
 
-    // for (const contact of contacts) {
-    //   if (contact.id !== primaryContact.id && contact.linkedId !== primaryContact.id) {
-    //     await prisma.contact.update({
-    //       where: { id: contact.id },
-    //       data: {
-    //         linkedId: primaryContact.id,
-    //         linkPrecedence: "secondary",
-    //       },
-    //     });
-    //   }
-    // }
+    // If primary contact has a linkedId, find the actual primary contact
+    for (const contact of initialContacts) {
+      if (contact.linkedId) {
+        const linkedPrimary = await prisma.contact.findUnique({
+          where: { id: contact.linkedId },
+        });
+        if (linkedPrimary) {
+          primaryContact = linkedPrimary;
+          break;
+        }
+      }
+    }
+    // Ensure we include all linked contacts up to the primary contact
+    const allContacts = await prisma.contact.findMany({
+      where: {
+        OR: [{ id: primaryContact.id }, { linkedId: primaryContact.id }],
+      },
+    });
 
-    for (const contact of contacts) {
+    for (const contact of initialContacts) {
       if (contact.id !== primaryContact.id && contact.linkedId !== primaryContact.id && !((contact.email === null && email === null) || (contact.phoneNumber === null && phoneNumber === null))) {
         await prisma.contact.update({
           where: { id: contact.id },
@@ -63,11 +71,11 @@ async function identify(req: express.Request, res: express.Response) {
         });
       }
     }
-    // Check if the provided data matches an existing contact
-    const emailMatch = email && contacts.some((contact) => contact.email === email);
-    const phoneMatch = phoneNumber && contacts.some((contact) => contact.phoneNumber === phoneNumber);
 
-    // Create a new secondary contact if there's new information
+    const emailMatch = email && initialContacts.some((contact) => contact.email === email);
+    const phoneMatch = phoneNumber && initialContacts.some((contact) => contact.phoneNumber === phoneNumber);
+
+    // Createiing a new secondary contact if new info
     if ((email && !emailMatch) || (phoneNumber && !phoneMatch)) {
       await prisma.contact.create({
         data: {
@@ -80,12 +88,6 @@ async function identify(req: express.Request, res: express.Response) {
     }
 
     // Gather all linked contacts
-    const allContacts = await prisma.contact.findMany({
-      where: {
-        OR: [{ id: primaryContact.id }, { linkedId: primaryContact.id }],
-      },
-    });
-    console.log(allContacts, "contacts");
     const emails = new Set<string>();
     const phoneNumbers = new Set<string>();
     const secondaryContactIds: number[] = [];
