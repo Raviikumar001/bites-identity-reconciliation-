@@ -16,7 +16,7 @@ DATABASE_URL = your postgresql database url
 
 Instructions:
 ```
-git clone ['repo name'](https://github.com/Raviikumar001/bites-identity-reconciliation-.git)
+git clone https://github.com/Raviikumar001/bites-identity-reconciliation-.git
 
 ```
 ```
