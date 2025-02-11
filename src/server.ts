@@ -1,11 +1,15 @@
 import app from './app';
-import { pool } from './db';
+import { pool , createContactTable} from './db';
 
-const PORT = process.env.PORT || 3000;
+const init = async () => {
+    await createContactTable();
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, () => {
+        console.log(`Server listening on port ${PORT}`);
+    });
+};
 
-app.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
-});
+init().catch(console.error);
 
 process.on('SIGINT', () => {
     console.log('Shutting down gracefully...');
