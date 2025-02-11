@@ -1,3 +1,4 @@
-node_modules
-# Keep environment variables out of version control
-.env
+node_modules/      # Don't track dependencies
+dist/             # Don't track compiled code
+.env              # NEVER track environment variables
+*.log             # Log files
