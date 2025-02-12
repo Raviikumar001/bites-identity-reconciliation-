@@ -17,7 +17,7 @@ export class ContactService {
     try {
       await client.query('BEGIN');
 
-      // 1. Find all related contacts through email or phone
+
       const relatedContactsResult = await client.query(
         `
         WITH RECURSIVE ContactLinks AS (
@@ -43,7 +43,7 @@ export class ContactService {
 
       let contacts = relatedContactsResult.rows;
 
-      // 2. No existing contacts - create new primary
+
       if (contacts.length === 0) {
         const newContactResult = await client.query(
           `
@@ -56,7 +56,7 @@ export class ContactService {
         );
         contacts = [newContactResult.rows[0]];
       } 
-      // 3. Existing contacts found
+
       else {
         const primaryContact = contacts.reduce((oldest, current) => 
           new Date(oldest.createdAt) <= new Date(current.createdAt) ? oldest : current
@@ -77,7 +77,6 @@ export class ContactService {
               [primaryContact.id, contact.id]
             );
 
-            // Update all contacts that were linked to this now-secondary contact
             await client.query(
               `
               UPDATE "Contact"
@@ -90,7 +89,7 @@ export class ContactService {
           }
         }
 
-        // Refresh our contacts list after the updates
+
         const updatedContactsResult = await client.query(
           `
           WITH RECURSIVE ContactLinks AS (
