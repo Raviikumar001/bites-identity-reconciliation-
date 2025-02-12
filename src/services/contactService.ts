@@ -58,14 +58,14 @@ export class ContactService {
       } 
       // 3. Existing contacts found
       else {
-        // Find the primary contact (oldest one)
         const primaryContact = contacts.reduce((oldest, current) => 
           new Date(oldest.createdAt) <= new Date(current.createdAt) ? oldest : current
         );
 
-        // Convert any other primaries to secondary
+        // First, update any primaries to secondary
         for (const contact of contacts) {
           if (contact.linkPrecedence === 'primary' && contact.id !== primaryContact.id) {
+            // Update the contact to secondary
             await client.query(
               `
               UPDATE "Contact"
@@ -76,12 +76,43 @@ export class ContactService {
               `,
               [primaryContact.id, contact.id]
             );
-            contact.linkPrecedence = 'secondary';
-            contact.linkedId = primaryContact.id;
+
+            // Update all contacts that were linked to this now-secondary contact
+            await client.query(
+              `
+              UPDATE "Contact"
+              SET "linkedId" = $1,
+                  "updatedAt" = NOW()
+              WHERE "linkedId" = $2
+              `,
+              [primaryContact.id, contact.id]
+            );
           }
         }
 
-        // Check if we need to create a new secondary contact
+        // Refresh our contacts list after the updates
+        const updatedContactsResult = await client.query(
+          `
+          WITH RECURSIVE ContactLinks AS (
+            SELECT * FROM "Contact" 
+            WHERE ("email" = $1 AND "email" IS NOT NULL)
+               OR ("phoneNumber" = $2 AND "phoneNumber" IS NOT NULL)
+            
+            UNION
+            
+            SELECT c.*
+            FROM "Contact" c
+            INNER JOIN ContactLinks cl ON 
+              c."linkedId" = cl."id" OR cl."linkedId" = c."id"
+          )
+          SELECT * FROM ContactLinks
+          ORDER BY "createdAt" ASC
+          `,
+          [email, phoneNumber]
+        );
+        contacts = updatedContactsResult.rows;
+
+
         const hasNewEmail = email && !contacts.some(c => c.email === email);
         const hasNewPhone = phoneNumber && !contacts.some(c => c.phoneNumber === phoneNumber);
 
@@ -112,7 +143,7 @@ export class ContactService {
   }
 
   private buildResponse(contacts: Contact[]): ContactResponse {
-    // Find primary (oldest) contact
+
     const primaryContact = contacts.reduce((oldest, current) => 
       new Date(oldest.createdAt) <= new Date(current.createdAt) ? oldest : current
     );
@@ -121,7 +152,7 @@ export class ContactService {
       throw new Error('Primary contact not found');
     }
 
-    // Collect unique emails (primary first)
+
     const emails: string[] = [];
     if (primaryContact.email) {
       emails.push(primaryContact.email);
@@ -132,7 +163,7 @@ export class ContactService {
       }
     });
 
-    // Collect unique phone numbers (primary first)
+
     const phoneNumbers: string[] = [];
     if (primaryContact.phoneNumber) {
       phoneNumbers.push(primaryContact.phoneNumber);
@@ -143,7 +174,7 @@ export class ContactService {
       }
     });
 
-    // Get all secondary contact IDs
+  
     const secondaryContactIds = contacts
       .filter(contact => contact.id !== primaryContact.id)
       .map(contact => contact.id);
